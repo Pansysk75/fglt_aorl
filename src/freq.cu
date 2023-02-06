@@ -67,8 +67,7 @@ void freq_device_to_host(freq f, freq f_d){
 __global__
 void kernel_spmv(size_t n_vertices, size_t* A_com, size_t* A_unc, size_t *x, size_t *y) {
   /* y = Ax 
-  Each GPU thread calculates one element of the result,
-  -> loops through 'idx' row of A and all of x. */
+  Each GPU thread calculates one element of the result vector */
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
   if(idx < n_vertices){
@@ -138,7 +137,6 @@ freq freq_calc(csx A) {
   cudaMalloc(&A_unc_d,        A->e * sizeof(size_t));
   cudaMemcpy(A_unc_d, A->unc, A->e * sizeof(size_t), cudaMemcpyHostToDevice);
 
-  
   int blockSize = 256;
   int numBlocks = (A->v + blockSize - 1) / blockSize;
 
@@ -148,16 +146,25 @@ freq freq_calc(csx A) {
   kernel_s2   <<<numBlocks, blockSize>>>(A->v, f_d->s1, f_d->s2);
   kernel_s3   <<<numBlocks, blockSize>>>(A->v, f_d->s1, f_d->s3);
   
-  // For now c3 is calculated on Host, then sent to Device
+  freq_device_to_host(f, f_d); //This is blocking! Probably not good for perf
+
+  // For now c3 and s4 are done on the host
   c3(A, f->s4);
-  cudaMemcpy(f_d->s4, f->s4, (A->v)*sizeof(size_t), cudaMemcpyHostToDevice);
-  kernel_s4   <<<numBlocks, blockSize>>>(A->v, f_d->s2, f_d->s3, f_d->s4);
+  #pragma omp parallel for
+  for (size_t i = 0; i<A->v; i++){
+    f->s2[i] -= 2 * f->s4[i];
+    f->s3[i] -= f->s4[i];
+  }
 
+  // // We could also copy c3 to Device and do s3 calculation there
+  // c3(A, f->s4);
+  // cudaMemcpy(f_d->s4, f->s4, (A->v)*sizeof(size_t), cudaMemcpyHostToDevice);
+  // kernel_s4   <<<numBlocks, blockSize>>>(A->v, f_d->s2, f_d->s3, f_d->s4);
 
-  freq_device_to_host(f, f_d);
-
+  cudaDeviceSynchronize();
+  // freq_device_to_host(f, f_d);
+  
   freq_d_free(f_d);
-
   return f;
 }
 
@@ -184,6 +191,7 @@ void freq_print(freq f) {
  */
 void c3(csx A, size_t *c3) {
   int j, k, l, lb, up, clb, cup, llb;
+  #pragma omp parallel for
   for(int i = 0; i < A->v; i++) {
     lb = A->com[i];
     up = A->com[i + 1];

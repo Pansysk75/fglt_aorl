@@ -10,8 +10,9 @@ OBJFILES = $(CFILES:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o) $(CUFILES:$(SRC_DIR)/%.cu=$(O
 OUT      = $(BIN_DIR)/fglt_aorl
 
 CC  =  /usr/local/cuda/bin/nvcc
+LDFLAGS = -lgomp
 
-all: CFLAGS += -O3
+all: CFLAGS += -O3 -Xcompiler -fopenmp
 all: $(OUT)
 
 debug: CFLAGS += -DDEBUG --generate-line-info
