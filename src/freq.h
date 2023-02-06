@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include <stdlib.h>
-#include <cilk/cilk.h>
 
 #include "csx.h"
 
@@ -23,6 +22,8 @@ typedef struct FREQ *freq;
 freq freq_new(size_t number_of_vertices);
 
 void freq_free(freq f);
+
+void freq_device_to_host(freq f, freq f_d);
 
 freq freq_calc(csx A);
 

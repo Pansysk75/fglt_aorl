@@ -1,4 +1,3 @@
-#include <cilk/cilk_api.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -18,7 +17,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  printf("CILK_NWORKERS: %d\n\n", __cilkrts_get_nworkers());
+  // printf("CILK_NWORKERS: %d\n\n", __cilkrts_get_nworkers());
 
   struct timespec start, end;
 
