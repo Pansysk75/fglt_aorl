@@ -80,8 +80,33 @@ void kernel_spmv(size_t n_vertices, size_t* A_com, size_t* A_unc, size_t *x, siz
 }
 
 __global__
-void kernel_c3(size_t n_vertices, size_t* A_com, size_t* A_unc, size_t *x, size_t *y) {
-  /* ???? */  
+void kernel_c3(size_t n_vertices, size_t* A_com, size_t* A_unc, size_t *c3) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n_vertices) {
+  int j, k, l, lb, up, clb, cup, llb;
+    lb = A_com[i];
+    up = A_com[i + 1];
+    for (j = lb; j < up; j++) {
+      clb = A_com[A_unc[j]];
+      cup = A_com[A_unc[j] + 1];
+      llb = lb;
+      for (k = clb; k < cup; k++) {
+        for (l = llb; l < up; l++) {
+          if (A_unc[k] == A_unc[l]) {
+            c3[i]++;
+            llb = l + 1;
+            break;
+          } else if (A_unc[k] < A_unc[l]) {
+            llb = l;
+            break;
+          } else {
+            llb = l + 1;
+          }
+        }
+      }
+    }
+    c3[i] /= 2;
+  }
 }
 
 
@@ -146,23 +171,28 @@ freq freq_calc(csx A) {
   kernel_s2   <<<numBlocks, blockSize>>>(A->v, f_d->s1, f_d->s2);
   kernel_s3   <<<numBlocks, blockSize>>>(A->v, f_d->s1, f_d->s3);
   
-  freq_device_to_host(f, f_d); //This is blocking! Probably not good for perf
+  kernel_c3   <<<numBlocks, blockSize>>>(A->v, A_com_d, A_unc_d, f_d->s4);
+  kernel_s4   <<<numBlocks, blockSize>>>(A->v, f_d->s2, f_d->s3, f_d->s4);
 
-  // For now c3 and s4 are done on the host
-  c3(A, f->s4);
-  #pragma omp parallel for
-  for (size_t i = 0; i<A->v; i++){
-    f->s2[i] -= 2 * f->s4[i];
-    f->s3[i] -= f->s4[i];
-  }
+  // // We could instead do c3 and s4 on the host
+  // freq_device_to_host(f, f_d); //This is blocking! Probably not good for perf
+  // c3(A, f->s4);
+  // #pragma omp parallel for
+  // for (size_t i = 0; i<A->v; i++){
+  //   f->s2[i] -= 2 * f->s4[i];
+  //   f->s3[i] -= f->s4[i];
+  // }
 
-  // // We could also copy c3 to Device and do s3 calculation there
+  // // Or we could copy c3 to Device and do s4 calculation there
   // c3(A, f->s4);
   // cudaMemcpy(f_d->s4, f->s4, (A->v)*sizeof(size_t), cudaMemcpyHostToDevice);
   // kernel_s4   <<<numBlocks, blockSize>>>(A->v, f_d->s2, f_d->s3, f_d->s4);
 
+
+
+
   cudaDeviceSynchronize();
-  // freq_device_to_host(f, f_d);
+  freq_device_to_host(f, f_d);
   
   freq_d_free(f_d);
   return f;
