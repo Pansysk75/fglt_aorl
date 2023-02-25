@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+// #include <time.h>
+#include <chrono>
 
 extern "C"{
 #include "csx.h"
@@ -8,12 +9,19 @@ extern "C"{
 
 
 
-#define TIME_OP(NAME, OP)\
-  clock_gettime(CLOCK_MONOTONIC, &T_START); \
-  OP; \
-  clock_gettime(CLOCK_MONOTONIC, &T_END); \
-  {double t_elapsed = (double)(T_END.tv_sec - T_START.tv_sec) * 1000 + (double)(T_END.tv_nsec - T_START.tv_nsec) / 1000000; \
-  printf("%s took %f ms\n", NAME,  t_elapsed);};
+// #define TIME_OP(NAME, OP)\
+//   clock_gettime(CLOCK_MONOTONIC, &T_START); \
+//   OP; \
+//   clock_gettime(CLOCK_MONOTONIC, &T_END); \
+//   {double t_elapsed = (double)(T_END.tv_sec - T_START.tv_sec) * 1000 + (double)(T_END.tv_nsec - T_START.tv_nsec) / 1000000; \
+//   printf("%s took %f ms\n", NAME,  t_elapsed);};
+
+#define TIME_OP(NAME, OP) \
+      T_START = std::chrono::high_resolution_clock::now(); \
+      OP; \
+      T_END = std::chrono::high_resolution_clock::now(); \
+      printf("%s took %f ms\n", NAME,  (double)std::chrono::duration_cast<std::chrono::milliseconds>(T_END-T_START).count());
+      // std::cout << name << " took " << std::chrono::duration_cast<std::chrono::milliseconds>(T_END-T_START).count() << " ms" << std::endl;
 
 
 #define TIMER_START \
@@ -128,7 +136,8 @@ void kernel_s4(size_t n_vertices, size_t* s2, size_t* s3, size_t* s4){
 
 
 void fglt(csx h_A){
-  struct timespec T_START, T_END;
+  // struct timespec T_START, T_END;
+  std::chrono::system_clock::time_point T_START, T_END;
 
   // Allocate device vectors
   size_t *d_d0, *d_d1, *d_d2, *d_d3, *d_d4;
@@ -157,7 +166,7 @@ void fglt(csx h_A){
 
 
   // Run calculations on device
-  int blockSize = 256;
+  int blockSize = 1024;
   int numBlocks = (h_A->v + blockSize - 1) / blockSize;
 
   TIME_OP("d0",
@@ -235,7 +244,8 @@ void fglt(csx h_A){
 
 int main(int argc, char *argv[]) {
 
-  struct timespec T_START, T_END;
+  // struct timespec T_START, T_END;
+  std::chrono::system_clock::time_point T_START, T_END;
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s [martix-market-filename]\n", argv[0]);
