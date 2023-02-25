@@ -6,15 +6,14 @@ extern "C"{
 #include "csx.h"
 }
 
-struct timespec T_START, T_END;
-double T_ELAPSED;
+
 
 #define TIME_OP(NAME, OP)\
   clock_gettime(CLOCK_MONOTONIC, &T_START); \
   OP; \
   clock_gettime(CLOCK_MONOTONIC, &T_END); \
-  T_ELAPSED = (double)(T_END.tv_sec - T_START.tv_sec) * 1000 + (double)(T_END.tv_nsec - T_START.tv_nsec) / 1000000; \
-  printf("%s took %f ms\n", NAME,  T_ELAPSED); \
+  {double t_elapsed = (double)(T_END.tv_sec - T_START.tv_sec) * 1000 + (double)(T_END.tv_nsec - T_START.tv_nsec) / 1000000; \
+  printf("%s took %f ms\n", NAME,  t_elapsed);};
 
 
 #define TIMER_START \
@@ -22,8 +21,8 @@ double T_ELAPSED;
 
 #define TIMER_STOP(NAME) \
   clock_gettime(CLOCK_MONOTONIC, &T_END); \
-  T_ELAPSED = (double)(T_END.tv_sec - T_START.tv_sec) * 1000 + (double)(T_END.tv_nsec - T_START.tv_nsec) / 1000000; \
-  printf("%s took %f ms\n", NAME,  T_ELAPSED); \
+  {double t_elapsed = (double)(T_END.tv_sec - T_START.tv_sec) * 1000 + (double)(T_END.tv_nsec - T_START.tv_nsec) / 1000000; \
+  printf("%s took %f ms\n", NAME,  t_elapsed);}
 
 
 
@@ -128,20 +127,8 @@ void kernel_s4(size_t n_vertices, size_t* s2, size_t* s3, size_t* s4){
 
 
 
-
-
-
-int main(int argc, char *argv[]) {
-
-  if (argc < 2) {
-    fprintf(stderr, "Usage: %s [martix-market-filename]\n", argv[0]);
-    exit(1);
-  }
-
-  // Read mtx file
-  TIME_OP("Loading the file",
-    csx h_A = csc_from_file(argv[1]);
-  )
+void fglt(csx h_A){
+  struct timespec T_START, T_END;
 
   // Allocate device vectors
   size_t *d_d0, *d_d1, *d_d2, *d_d3, *d_d4;
@@ -206,24 +193,25 @@ int main(int argc, char *argv[]) {
 
 
   // Transfer results from device to host
+  TIME_OP("Moving the results back to the host",
   cudaMemcpy(h_d0, d_d0, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(h_d1, d_d1, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(h_d2, d_d2, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(h_d3, d_d3, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(h_d4, d_d4, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
-
+  cudaDeviceSynchronize();
+  );
   
-
-  // Validate Result
-  size_t s0=0, s1=0, s2=0, s3=0, s4=0;
-  for(int i=0; i<h_A->v; i++){
-    s0 += h_d0[i];
-    s1 += h_d1[i];
-    s2 += h_d2[i];
-    s3 += h_d3[i];
-    s4 += h_d4[i];
-  }
-  printf("s0:%lu\ns1:%lu\ns2:%lu\ns3:%lu\ns4:%lu\n", s0, s1, s2, s3, s4);
+  // // Validate Result
+  // size_t s0=0, s1=0, s2=0, s3=0, s4=0;
+  // for(int i=0; i<h_A->v; i++){
+  //   s0 += h_d0[i];
+  //   s1 += h_d1[i];
+  //   s2 += h_d2[i];
+  //   s3 += h_d3[i];
+  //   s4 += h_d4[i];
+  // }
+  // printf("s0:%lu\ns1:%lu\ns2:%lu\ns3:%lu\ns4:%lu\n", s0, s1, s2, s3, s4);
 
 
   // Free device memory
@@ -241,6 +229,27 @@ int main(int argc, char *argv[]) {
   free(h_d2);
   free(h_d3);
   free(h_d4);
+}
+
+
+
+int main(int argc, char *argv[]) {
+
+  struct timespec T_START, T_END;
+
+  if (argc < 2) {
+    fprintf(stderr, "Usage: %s [martix-market-filename]\n", argv[0]);
+    exit(1);
+  }
+
+  // Read mtx file
+  TIME_OP("Loading the file",
+    csx h_A = csc_from_file(argv[1]);
+  )
+
+  TIME_OP("The whole fglt",   
+  fglt(h_A);
+  );
   csx_free(h_A);
 
   return 0;
