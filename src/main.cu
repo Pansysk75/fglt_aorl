@@ -7,8 +7,6 @@ extern "C"{
 #include "csx.h"
 }
 
-
-
 // #define TIME_OP(NAME, OP)\
 //   clock_gettime(CLOCK_MONOTONIC, &T_START); \
 //   OP; \
@@ -20,7 +18,7 @@ extern "C"{
       T_START = std::chrono::high_resolution_clock::now(); \
       OP; \
       T_END = std::chrono::high_resolution_clock::now(); \
-      printf("%s took %f ms\n", NAME,  (double)std::chrono::duration_cast<std::chrono::milliseconds>(T_END-T_START).count());
+      printf("%s took %f ms\n", NAME,  (double)std::chrono::duration_cast<std::chrono::microseconds>(T_END-T_START).count()/1000.0);
       // std::cout << name << " took " << std::chrono::duration_cast<std::chrono::milliseconds>(T_END-T_START).count() << " ms" << std::endl;
 
 
@@ -137,7 +135,7 @@ void kernel_s4(size_t n_vertices, size_t* s2, size_t* s3, size_t* s4){
 
 void fglt(csx h_A){
   // struct timespec T_START, T_END;
-  std::chrono::system_clock::time_point T_START, T_END;
+  std::chrono::high_resolution_clock::time_point T_START, T_END;
 
   // Allocate device vectors
   size_t *d_d0, *d_d1, *d_d2, *d_d3, *d_d4;
@@ -245,7 +243,7 @@ void fglt(csx h_A){
 int main(int argc, char *argv[]) {
 
   // struct timespec T_START, T_END;
-  std::chrono::system_clock::time_point T_START, T_END;
+  std::chrono::high_resolution_clock::time_point T_START, T_END;
 
   if (argc < 2) {
     fprintf(stderr, "Usage: %s [martix-market-filename]\n", argv[0]);
