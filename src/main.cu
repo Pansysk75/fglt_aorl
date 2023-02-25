@@ -175,32 +175,37 @@ int main(int argc, char *argv[]) {
 
   TIME_OP("d0",
   (kernel_s0   <<<numBlocks, blockSize>>>(h_A->v, d_d0));
+  cudaDeviceSynchronize();
   );
 
   TIME_OP("d1",
   (kernel_s1   <<<numBlocks, blockSize>>>(h_A->v, d_A_com , d_d1));
+  cudaDeviceSynchronize();
   );
 
   TIME_OP("d2",
   (kernel_spmv <<<numBlocks, blockSize>>>(h_A->v, d_A_com, d_A_unc, d_d1, d_d2));
   (kernel_s2   <<<numBlocks, blockSize>>>(h_A->v, d_d1, d_d2));
+  cudaDeviceSynchronize();
   );
 
   TIME_OP("d3",
   (kernel_s3   <<<numBlocks, blockSize>>>(h_A->v, d_d1, d_d3));
+  cudaDeviceSynchronize();
   );
   
   TIME_OP("c3",
   (kernel_c3 <<<numBlocks, blockSize>>>(h_A->v, d_A_com, d_A_unc, d_d4)); 
+  cudaDeviceSynchronize();
   );
   
   TIME_OP("d4",
   (kernel_s4   <<<numBlocks, blockSize>>>(h_A->v, d_d2, d_d3, d_d4));
+  cudaDeviceSynchronize();
   );
 
 
   // Transfer results from device to host
-  cudaDeviceSynchronize();
   cudaMemcpy(h_d0, d_d0, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(h_d1, d_d1, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
   cudaMemcpy(h_d2, d_d2, (h_A->v)*sizeof(size_t), cudaMemcpyDeviceToHost);
@@ -209,16 +214,16 @@ int main(int argc, char *argv[]) {
 
   
 
-  // // Validate Result
-  // size_t s0=0, s1=0, s2=0, s3=0, s4=0;
-  // for(int i=0; i<h_A->v; i++){
-  //   s0 += h_d0[i];
-  //   s1 += h_d1[i];
-  //   s2 += h_d2[i];
-  //   s3 += h_d3[i];
-  //   s4 += h_d4[i];
-  // }
-  // printf("s0:%lu\ns1:%lu\ns2:%lu\ns3:%lu\ns4:%lu\n", s0, s1, s2, s3, s4);
+  // Validate Result
+  size_t s0=0, s1=0, s2=0, s3=0, s4=0;
+  for(int i=0; i<h_A->v; i++){
+    s0 += h_d0[i];
+    s1 += h_d1[i];
+    s2 += h_d2[i];
+    s3 += h_d3[i];
+    s4 += h_d4[i];
+  }
+  printf("s0:%lu\ns1:%lu\ns2:%lu\ns3:%lu\ns4:%lu\n", s0, s1, s2, s3, s4);
 
 
   // Free device memory
